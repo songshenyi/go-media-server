@@ -1,27 +1,40 @@
 package main
 
 import (
-	"net/http"
 	log "github.com/cihub/seelog"
+	"github.com/songshenyi/go-media-server/server"
+	"os"
+	"os/signal"
+	"syscall"
+	"runtime"
+	"github.com/songshenyi/go-media-server/logger"
+	"github.com/songshenyi/go-media-server/application"
 )
 
-func LiveHandler(w http.ResponseWriter, r *http.Request){
-	log.Debug(r.Method)
-	buf := make([]byte, 10240)
+func signalHandle(){
+	signalChan := make(chan os.Signal)
+	signal.Notify(signalChan)
 	for{
-		len, err := r.Body.Read(buf)
-		if err !=nil{
-			log.Debug(len)
-			log.Error(err)
-			break;
+		s:= <- signalChan
+		log.Infof("recv signal %d", s)
+		switch s{
+		case syscall.SIGTERM:
+			fallthrough
+		case syscall.SIGQUIT:
+			buf :=make([]byte, 1<<20)
+			runtime.Stack(buf, true)
+			log.Infof("killed by signal %d", s)
+			log.Infof("goroutine stack \n%s", buf)
+			return
 		}
-		log.Debug(len)
 	}
-
 }
 
 func main(){
-	http.HandleFunc("/live/" , LiveHandler)
-
-	http.ListenAndServe(":8888", nil)
+	log.Info("Server Start")
+	logger.InitAccessLog("config/access.xml")
+	httpServer := server.NewHttpServer(8888)
+	application.AddHandle(httpServer)
+	httpServer.Start()
+	signalHandle()
 }

@@ -14,6 +14,13 @@ type HttpServer struct{
 	HandleMap map[string]func(http.ResponseWriter,*http.Request)
 }
 
+func NewHttpServer(port uint16)(*HttpServer){
+	return &HttpServer{
+		Port: port,
+		HandleMap: make( map[string]func(http.ResponseWriter,*http.Request)),
+	}
+}
+
 func (s *HttpServer)Start(){
 	muxHandler := mux.NewRouter()
 	for path, f :=range s.HandleMap{

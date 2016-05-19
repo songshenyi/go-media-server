@@ -1,0 +1,10 @@
+<seelog minlevel="debug">
+    <outputs formatid="accessformat">
+        <console />
+        <rollingfile type="date" filename="logs/record_controller_access.log" datepattern="20060102" maxrolls="10"/>
+    </outputs>
+    <formats>
+        <!--doc: https://github.com/cihub/seelog/wiki/Format-reference -->
+        <format id="accessformat" format="%Msg%n"/>
+    </formats>
+</seelog>
