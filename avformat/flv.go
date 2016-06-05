@@ -3,26 +3,30 @@ package avformat
 import "bytes"
 
 type FLVHeader struct {
-	Data [13]byte
+	Signature [3]byte
+	Version uint8
+	EnableAudio bool
+	EnableVideo bool
+	Offset uint32
 }
 
-func (h *FLVHeader)SetAudioFlag(flag bool){
-	f := 0x04 * flag
-	h.Data[4] = (( h.Data[4] & 0x01) |  f)
-}
-
-func (h *FLVHeader)SetVideoFlag(flag bool){
-	f := 0x01 * flag
-	h.Data[4] = (( h.Data[4] & 0x04) |  f)
-}
-
-func (h *FLVHeader)GetAudioFlag()(flag bool){
-	return h.Data[4] & 0x04
-}
-
-func (h *FLVHeader)GetVideoFlag()(flag bool){
-	return h.Data[4] & 0x01
-}
+//func (h *FLVHeader)SetAudioFlag(flag bool){
+//	f := 0x04 * flag
+//	h.Data[4] = (( h.Data[4] & 0x01) |  f)
+//}
+//
+//func (h *FLVHeader)SetVideoFlag(flag bool){
+//	f := 0x01 * flag
+//	h.Data[4] = (( h.Data[4] & 0x04) |  f)
+//}
+//
+//func (h *FLVHeader)GetAudioFlag()(flag bool){
+//	return h.Data[4] & 0x04
+//}
+//
+//func (h *FLVHeader)GetVideoFlag()(flag bool){
+//	return h.Data[4] & 0x01
+//}
 
 type RTMPMessageType uint8
 
