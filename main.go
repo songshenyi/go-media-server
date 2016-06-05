@@ -1,7 +1,6 @@
 package main
 
 import (
-	log "github.com/cihub/seelog"
 	"github.com/songshenyi/go-media-server/server"
 	"os"
 	"os/signal"
@@ -16,22 +15,23 @@ func signalHandle(){
 	signal.Notify(signalChan)
 	for{
 		s:= <- signalChan
-		log.Infof("recv signal %d", s)
+		logger.Infof("recv signal %d", s)
 		switch s{
 		case syscall.SIGTERM:
 			fallthrough
 		case syscall.SIGQUIT:
 			buf :=make([]byte, 1<<20)
 			runtime.Stack(buf, true)
-			log.Infof("killed by signal %d", s)
-			log.Infof("goroutine stack \n%s", buf)
+			logger.Infof("killed by signal %d", s)
+			logger.Infof("goroutine stack \n%s", buf)
 			return
 		}
 	}
 }
 
 func main(){
-	log.Info("Server Start")
+	logger.InitLaunchLog()
+	logger.Info("Server Start")
 	logger.InitAccessLog("config/access.xml")
 	httpServer := server.NewHttpServer(8888)
 	application.AddHandle(httpServer)

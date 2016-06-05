@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/songshenyi/go-media-server/logger"
 	"time"
-	log "github.com/cihub/seelog"
 	"net"
 )
 
@@ -25,7 +24,7 @@ func NewHttpServer(port uint16)(*HttpServer){
 func ConnState(c net.Conn, cs http.ConnState){
 	idleTimeout:=time.Second * 10
 	//activeTimeout := time.Second * 0
-	log.Tracef("%s, %s", c.RemoteAddr(), cs)
+	logger.Tracef("%s, %s", c.RemoteAddr(), cs)
 	switch cs {
 	case http.StateIdle, http.StateNew:
 		c.SetReadDeadline(time.Now().Add(idleTimeout) )
@@ -52,7 +51,7 @@ func (s *HttpServer)Start(){
 		err := server.ListenAndServe()
 
 		if err != nil {
-			log.Error(err)
+			logger.Error(err)
 		}
 	}()
 }
