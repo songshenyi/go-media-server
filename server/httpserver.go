@@ -6,7 +6,8 @@ import (
 	"fmt"
 	"github.com/songshenyi/go-media-server/logger"
 	"time"
-	"github.com/cihub/seelog"
+	log "github.com/cihub/seelog"
+	"net"
 )
 
 type HttpServer struct{
@@ -21,6 +22,18 @@ func NewHttpServer(port uint16)(*HttpServer){
 	}
 }
 
+func ConnState(c net.Conn, cs http.ConnState){
+	idleTimeout:=time.Second * 10
+	//activeTimeout := time.Second * 0
+	log.Tracef("%s, %s", c.RemoteAddr(), cs)
+	switch cs {
+	case http.StateIdle, http.StateNew:
+		c.SetReadDeadline(time.Now().Add(idleTimeout) )
+	case http.StateActive:
+		c.SetReadDeadline(time.Time{})
+	}
+}
+
 func (s *HttpServer)Start(){
 	muxHandler := mux.NewRouter()
 	for path, f :=range s.HandleMap{
@@ -31,14 +44,15 @@ func (s *HttpServer)Start(){
 	server := http.Server{
 		Addr:	addr,
 		Handler: logger.LoggingHandler(&logger.Access{}, muxHandler),
-		ReadTimeout: 6 * time.Second,
+		ReadTimeout: 0,
+		ConnState: ConnState,
 	}
 
 	go func() {
 		err := server.ListenAndServe()
 
 		if err != nil {
-			seelog.Error(err)
+			log.Error(err)
 		}
 	}()
 }
