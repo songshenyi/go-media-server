@@ -24,49 +24,24 @@ type Message interface {
 	Muxer() MessageMuxer
 }
 
-// the opener to open the resource.
-type Opener interface {
-	// open the resource.
-	Open() error
-}
-
-// the open and closer for resource manage.
-type OpenCloser interface {
-	Opener
-	io.Closer
-}
-
-// the agent contains a source
-// which ingest message from upstream sink
-// write message to channel
-// finally delivery to downstream sink.
-//
-// the arch for agent is:
-//      +-----upstream----+           +---downstream----+
-//    --+-source => sink--+--(tie->)--+-source => sink--+--
-//      +-----------------+           +-----------------+
-//
-// @remark all method is sync, user should never assume it's async.
 type Agent interface {
-	// an agent is a resource manager.
-	OpenCloser
+
+	Open() (err error)
+	Close() (err error)
 
 	// do agent jobs, to pump messages
-	// from source to sink.
+	// from source to dest.
 	Pump() (err error)
-	// write to source, from upstream sink.
+	// write to dest, from source.
 	Write(m Message) (err error)
 
-	// source tie to the upstream sink.
-	Tie(sink Agent) (err error)
-	// destroy the link between source and upstream sink.
-	UnTie(sink Agent) (err error)
-	// get the tied upstream sink of source.
-	TiedSink() (sink Agent)
+	RegisterSource(source Agent) (err error)
 
-	// sink flow to the downstream source.
-	// @remark internal api, sink.Flow(source) when source.tie(sink).
-	Flow(source Agent) (err error)
-	// destroy the link between sink and downstream sink.
-	UnFlow(source Agent) (err error)
+	UnRegisterSource(source Agent) (err error)
+
+	GetSource() (source Agent)
+
+	RegisterDest(dest Agent) (err error)
+
+	UnRegisterDest(dest Agent) (err error)
 }
