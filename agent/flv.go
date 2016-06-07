@@ -10,7 +10,7 @@ type FLVPublishAgent struct{
 	ctx core.Context
 	req *http.Request
 
-	header *avformat.FLVHeader
+	header *avformat.FlvHeader
 }
 
 func NewFLVPublishAgent(ctx core.Context, r *http.Request) (*FLVPublishAgent){

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"fmt"
+	"github.com/songshenyi/go-media-server/avformat"
 )
 
 // the muxer of message type.
@@ -23,6 +24,8 @@ type Message interface {
 	Muxer() MessageMuxer
 }
 
+
+
 type Agent interface {
 
 	Open() (err error)
@@ -32,7 +35,7 @@ type Agent interface {
 	// from source to dest.
 	Pump() (err error)
 	// write to dest, from source.
-	Write(m Message) (err error)
+	Write(m avformat.FlvMessage) (err error)
 
 	RegisterSource(source Agent) (err error)
 

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"github.com/songshenyi/go-media-server/server"
 	"github.com/songshenyi/go-media-server/logger"
+	"github.com/songshenyi/go-media-server/avformat"
 )
 
 func AddHandle(httpServer *server.HttpServer){
@@ -14,14 +15,28 @@ func LiveHandler(w http.ResponseWriter, r *http.Request){
 	logger.Debug(r.Method)
 	//var buf1 bytes.Buffer
 
-	buf := make([]byte, 10240)
+	//buf := make([]byte, 10240)
+
+	header, err := avformat.ReadFlvHeader(r.Body)
+	if  err != nil{
+		logger.Warn(err)
+	}
+	logger.Info(header)
+
 	for{
-		len, err := r.Body.Read(buf)
-		if err !=nil{
-			logger.Debug(len)
-			logger.Error(err)
+		tag, err := avformat.ReadFlvTag(r.Body)
+		if  err != nil{
+			logger.Warn(err)
 			break;
 		}
+		logger.Info(tag.TagType)
+
+		//len, err := r.Body.Read(buf)
+		//if err !=nil{
+		//	logger.Debug(len)
+		//	logger.Error(err)
+		//	break;
+		//}
 
 	//	log.Debugf("%d, %d",len, buf[0])
 	}

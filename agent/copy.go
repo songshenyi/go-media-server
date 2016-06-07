@@ -10,10 +10,10 @@ type CopyAgent struct{
 	source Agent
 	dest []Agent
 
-	header *avformat.FLVHeader
-	metadata *avformat.FLVMessage
-	videoSequenceHeader *avformat.FLVMessage
-	audioSequenceHeader *avformat.FLVMessage
+	header *avformat.FlvHeader
+	metadata *avformat.FlvMessage
+	videoSequenceHeader *avformat.FlvMessage
+	audioSequenceHeader *avformat.FlvMessage
 }
 
 func NewCopyAgent(ctx core.Context) Agent{
