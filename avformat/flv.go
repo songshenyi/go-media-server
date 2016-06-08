@@ -5,6 +5,7 @@ import (
 	"github.com/songshenyi/go-media-server/logger"
 	"encoding"
 	"bytes"
+	"github.com/songshenyi/go-media-server/utils"
 )
 
 
@@ -32,15 +33,23 @@ type Marshaler interface {
 	Size() int
 }
 
-type GMSUint8 uint8
-
-
-type GMSUint24 uint32
-
-
-type GMSUint64 uint64
-
 type RtmpMessageType GMSUint8
+func (v *RtmpMessageType)MarshalBinary() (data []byte, err error) {
+	return []byte{byte(*v)}, nil
+}
+
+func (v *RtmpMessageType) Size() int {
+	return 1
+}
+
+func (v *RtmpMessageType) UnmarshalBinary(data []byte) (err error) {
+	if len(data) < v.Size() {
+		return io.EOF
+	}
+	*v = RtmpMessageType(data[0])
+	return
+}
+
 
 const (
 	RtmpMsgAmf0DataMessage RtmpMessageType = 18 // 0x12
@@ -49,10 +58,6 @@ const (
 	RtmpMsgAudioMessage RtmpMessageType = 8 // 0x08
 	RtmpMsgVideoMessage RtmpMessageType = 9 // 0x09
 )
-
-type FlvTagTimestamp uint64
-
-type FlvTagUint24 uint32
 
 type FlvMessage struct {
 	Tag *FlvTag
@@ -69,14 +74,55 @@ const (
 	FlvPreTagLenSize int = 4
 )
 
+type FlvHeaderSignature [3]byte
 
+func (v *FlvHeaderSignature) MarshalBinary() (data []byte, err error) {
+	data = make([]byte, v.Size())
+	copy(data, v[:])
+	return data, nil
+}
+
+func (v *FlvHeaderSignature) Size() int {
+	return 3
+}
+
+func (v *FlvHeaderSignature) UnmarshalBinary(data []byte) (err error) {
+	if len(data) < v.Size() {
+		return io.EOF
+	}
+	copy(v[:], data)
+	return
+}
+
+type FlvTagTimestamp uint64
+
+func (v *FlvTagTimestamp) MarshalBinary() (data []byte, err error) {
+	data = make([]byte, v.Size())
+	data[3] = byte(*v >> 24)
+	data[2] = byte(*v)
+	data[1] = byte(*v >> 8)
+	data[0] = byte(*v >> 16)
+	return data, nil
+}
+
+func (v *FlvTagTimestamp) Size() int {
+	return 4
+}
+
+func (v *FlvTagTimestamp) UnmarshalBinary(data []byte) (err error) {
+	if len(data) < v.Size() {
+		return io.EOF
+	}
+	*v = FlvTagTimestamp(uint32(data[3]) << 24 | uint32(data[0]) << 16 | uint32(data[1]) << 8 | uint32(data[2]))
+	return
+}
 
 type FlvHeader struct {
-	Signature [3]byte
-	Version uint8
+	Signature FlvHeaderSignature
+	Version GMSUint8
 	EnableAudio bool
 	EnableVideo bool
-	Offset uint32
+	Offset GMSUint32
 }
 
 func ReadFlvHeader(r io.Reader)(h *FlvHeader, err error){
@@ -88,18 +134,24 @@ func ReadFlvHeader(r io.Reader)(h *FlvHeader, err error){
 	}
 
 	data := buf.Bytes()
-	copy(h.Signature[:], data)
+	var AVFlag GMSUint8
+	if err = utils.Unmarshals(bytes.NewBuffer(data), &h.Signature, &h.Version, &AVFlag, &h.Offset); err != nil{
+		logger.Warn("Unmarshals flv header failed")
+		return h, err
+	}
+
+	//copy(h.Signature[:], data)
 	if string(h.Signature[:]) != "FLV" {
 		logger.Warnf("flv header Signature is wrong, %s", string(h.Signature[:]))
 		return h, err
 	}
 
-	if h.Version = data[3]; h.Version != 1 {
+	if h.Version != 1 {
 		logger.Warn("flv header Version invalid")
 		return h, err
 	}
 
-	AVFlag := data[4]
+	//AVFlag := data[4]
 	h.EnableAudio = (AVFlag & 0x04) != 0
 	h.EnableVideo = (AVFlag & 0x01) != 0
 
@@ -110,24 +162,34 @@ func ReadFlvHeader(r io.Reader)(h *FlvHeader, err error){
 
 type FlvTag struct{
 	TagType   RtmpMessageType
-	DataSize  uint32
-	TimeStamp uint64
-	StreamId  uint32
+	DataSize  GMSUint24
+	TimeStamp FlvTagTimestamp
+	StreamId  GMSUint24
 	Payload   []byte
 }
 
 func FlvGetDataSize(data []byte)(size uint32, err error){
-	size = uint32(data[2]) | uint32(data[1])<<8 | uint32(data[0])<<16
+	size = uint32(data[0])<<16 | uint32(data[1])<<8 | uint32(data[2])
 	return
 }
 
-func FlvGetTimestamp(data []byte)(size uint32, err error){
+
+
+func FlvGetTimestamp(data []byte)(ts uint32, err error){
+	ts = uint32(data[3] << 24) | uint32(data[0] << 16) | uint32(data[1] << 8) | uint32(data[2]);
 	return
 }
 
-func FlvGetStreamId(data []byte)(size uint32, err error){
+func FlvGetStreamId(data []byte)(streamid uint32, err error){
+	streamid = uint32(data[0])<<16 | uint32(data[1])<<8 | uint32(data[2])
 	return
 }
+
+func FlvGetPreTagSize(data []byte)(size uint32, err error){
+	size = uint32(data[0]) << 24 | uint32(data[1]) << 16 | uint32(data[2]) << 8 | uint32(data[3]);
+	return
+}
+
 
 func ReadFlvTag(r io.Reader)(tag *FlvTag, err error){
 	tag = &FlvTag{}
@@ -139,13 +201,19 @@ func ReadFlvTag(r io.Reader)(tag *FlvTag, err error){
 
 	data := buf.Bytes()
 
-	tag.TagType = RtmpMessageType(data[0])
-	tag.DataSize, err = FlvGetDataSize(data[1:4])
-	timeStamp, err := FlvGetTimestamp(data[4:8])
-	tag.TimeStamp = uint64(timeStamp)
-	tag.StreamId, err = FlvGetStreamId(data[8:10])
+	//tag.TagType = RtmpMessageType(data[0])
+	//tag.DataSize, err = FlvGetDataSize(data[1:4])
+	//timeStamp, err := FlvGetTimestamp(data[4:8])
+	//tag.TimeStamp = uint64(timeStamp)
+	//tag.StreamId, err = FlvGetStreamId(data[8:11])
+//
+	//buf.Reset()
 
-	buf.Reset()
+	if err = utils.Unmarshals(bytes.NewBuffer(data), &tag.TagType, &tag.DataSize, &tag.TimeStamp, &tag.StreamId); err != nil{
+		logger.Warn("Unmarshals flv header failed")
+		return tag, err
+	}
+
 	written, err := io.CopyN(&buf, r, int64(tag.DataSize))
 	if (written != int64(tag.DataSize) || err != nil) {
 		logger.Warn("read flv tag Data failed")

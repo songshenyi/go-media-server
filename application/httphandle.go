@@ -29,7 +29,7 @@ func LiveHandler(w http.ResponseWriter, r *http.Request){
 			logger.Warn(err)
 			break;
 		}
-		logger.Info(tag.TagType)
+		logger.Info(tag.TagType, tag.TimeStamp, tag.DataSize)
 
 		//len, err := r.Body.Read(buf)
 		//if err !=nil{
