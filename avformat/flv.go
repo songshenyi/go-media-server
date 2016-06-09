@@ -226,7 +226,7 @@ func ReadFlvTag(r io.Reader)(tag *FlvTag, err error){
 	buf.Reset()
 	io.CopyN(&buf, r, 4)
 
-	logger.Info("read flv tag")
+	logger.Debug("read flv tag")
 	return
 }
 
