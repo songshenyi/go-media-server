@@ -142,6 +142,7 @@ type FlvHeader struct {
 	EnableAudio bool
 	EnableVideo bool
 	Offset GMSUint32
+	PreTagSize0 GMSUint32
 }
 
 func (h *FlvHeader)ToMessage()(m *FlvMessage, err error){
@@ -161,7 +162,7 @@ func ReadFlvHeader(r io.Reader)(h *FlvHeader, err error){
 
 	data := buf.Bytes()
 	var AVFlag GMSUint8
-	if err = utils.Unmarshals(bytes.NewBuffer(data), &h.Signature, &h.Version, &AVFlag, &h.Offset); err != nil{
+	if err = utils.Unmarshals(bytes.NewBuffer(data), &h.Signature, &h.Version, &AVFlag, &h.Offset, &h.PreTagSize0); err != nil{
 		logger.Warn("Unmarshals flv header failed")
 		return h, err
 	}
@@ -195,10 +196,10 @@ func Btoi(b bool) int {
 func (h *FlvHeader)ToData()(data []byte, err error){
 	var AVFlag GMSUint8
 	audioFlag := GMSUint8(0x04 * Btoi(h.EnableAudio))
-	videoFlag := GMSUint8(0x04 * Btoi(h.EnableVideo))
+	videoFlag := GMSUint8(0x01 * Btoi(h.EnableVideo))
 	AVFlag = AVFlag | audioFlag | videoFlag
 
-	return utils.Marshals(&h.Signature, &h.Version, &AVFlag, &h.Offset)
+	return utils.Marshals(&h.Signature, &h.Version, &AVFlag, &h.Offset, &h.PreTagSize0)
 }
 
 type FlvTag struct{
@@ -295,18 +296,12 @@ func ReadFlvTag(r io.Reader)(tag *FlvTag, err error){
 
 	data := buf.Bytes()
 
-	//tag.TagType = RtmpMessageType(data[0])
-	//tag.DataSize, err = FlvGetDataSize(data[1:4])
-	//timeStamp, err := FlvGetTimestamp(data[4:8])
-	//tag.TimeStamp = uint64(timeStamp)
-	//tag.StreamId, err = FlvGetStreamId(data[8:11])
-//
-	//buf.Reset()
-
 	if err = utils.Unmarshals(bytes.NewBuffer(data), &tag.TagType, &tag.DataSize, &tag.TimeStamp, &tag.StreamId); err != nil{
 		logger.Warn("Unmarshals flv header failed")
 		return tag, err
 	}
+
+	buf.Reset()
 
 	written, err := io.CopyN(&buf, r, int64(tag.DataSize))
 	if (written != int64(tag.DataSize) || err != nil) {
@@ -314,13 +309,11 @@ func ReadFlvTag(r io.Reader)(tag *FlvTag, err error){
 		return tag, err
 	}
 
+	io.CopyN(&buf, r, 4)
 	tag.Payload = make([]byte, tag.DataSize)
 	copy(tag.Payload, buf.Bytes())
 
-	buf.Reset()
-	io.CopyN(&buf, r, 4)
-
-	logger.Debug("read flv tag")
+	logger.Trace("read flv tag")
 	return
 }
 

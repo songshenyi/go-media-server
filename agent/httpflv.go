@@ -19,7 +19,7 @@ type HttpFlvPublishAgent struct{
 	header *avformat.FlvMessage
 }
 
-func NewFLVPublishAgent(ctx core.Context, r *http.Request) (*HttpFlvPublishAgent){
+func NewFLVPublishAgent(ctx core.Context, r *http.Request, w http.ResponseWriter) (*HttpFlvPublishAgent){
 	return &HttpFlvPublishAgent{
 		ctx: ctx,
 		req: r,
@@ -32,10 +32,12 @@ func (v *HttpFlvPublishAgent)Open() (err error){
 }
 
 func (v*HttpFlvPublishAgent)Close() (err error){
+	logger.Info("Close http flv publish agent")
 	return
 }
 
 func (v *HttpFlvPublishAgent)Pump() (err error){
+	logger.Info("Pump http flv publish agent")
 	header, err := avformat.ReadFlvHeader(v.req.Body)
 	if  err != nil{
 		logger.Warn(err)
@@ -88,12 +90,23 @@ func (v*HttpFlvPublishAgent)UnRegisterDest(dest Agent) (err error){
 }
 
 type HttpFlvPlayAgent struct{
+	ctx core.Context
 	req *http.Request
 	writer http.ResponseWriter
 	source Agent
 
-	writeBuf []*avformat.FlvMessage
+
+	writeBuf chan *avformat.FlvMessage
 	writeLock sync.Mutex
+}
+
+func NewFLVPlayAgent(ctx core.Context, r *http.Request, w http.ResponseWriter) (*HttpFlvPlayAgent){
+	return &HttpFlvPlayAgent{
+		ctx: ctx,
+		req: r,
+		writer: w,
+		writeBuf: make(chan *avformat.FlvMessage, 10),
+	}
 }
 
 func (v *HttpFlvPlayAgent)Open() (err error){
@@ -106,29 +119,34 @@ func (v *HttpFlvPlayAgent)Close() (err error){
 }
 
 func (v *HttpFlvPlayAgent)Pump() (err error){
-	v.writeLock.Lock()
-	writeBuf := v.writeBuf[:]
-	v.writeBuf = v.writeBuf[0:0]
-	v.writeLock.Unlock()
-
-	for _, m := range writeBuf{
-		if(m.Header != nil){
-			data, _ := m.Header.ToData()
-			v.writer.Write(data)
-		}
-		if (m.Tag != nil) {
-			v.writer.Write(m.Tag.Payload)
+	for {
+		select {
+		case m := <-v.writeBuf:
+			if (m.Header != nil) {
+				data, _ := m.Header.ToData()
+				logger.Info(data)
+				v.writer.Write(data)
+			}
+			if (m.Tag != nil) {
+				logger.Info(m.Tag.Payload[0])
+				v.writer.Write(m.Tag.Payload)
+			}
 		}
 	}
 	return
 }
 
 func (v *HttpFlvPlayAgent)Write(m *avformat.FlvMessage) (err error){
+	select {
+	case v.writeBuf <- m:
+	default:
+	}
 	return
 }
 
 func (v *HttpFlvPlayAgent)RegisterSource(source Agent) (err error){
-	return
+	v.source = source
+	return source.RegisterDest(v)
 }
 
 func (v *HttpFlvPlayAgent)UnRegisterSource(source Agent) (err error){

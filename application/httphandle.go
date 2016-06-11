@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"github.com/songshenyi/go-media-server/server"
 	"github.com/songshenyi/go-media-server/logger"
-	"github.com/songshenyi/go-media-server/avformat"
 	"github.com/songshenyi/go-media-server/agent"
 	"github.com/songshenyi/go-media-server/core"
 )
@@ -19,32 +18,27 @@ func LiveHandler(w http.ResponseWriter, r *http.Request){
 	//var buf1 bytes.Buffer
 
 	//buf := make([]byte, 10240)
-
+	var httpAgent agent.Agent
+	var err error
 	if(r.Method == "PUT" || r.Method == "POST"){
-		if _, err := agent.Manager.NewHttpFlvPublishAgent(ctx, r); err != nil{
+		httpAgent, err = agent.Manager.NewHttpFlvPublishAgent(ctx, r, w)
+		if err != nil{
 			logger.Warn("create HttpFlvPublishAgent failed", err)
 			return
 		}
-	}else if r.Method == "GET"{
-
-	}
-
-
-	for{
-		tag, err := avformat.ReadFlvTag(r.Body)
-		if  err != nil{
-			logger.Warn(err)
-			break;
+	}else if r.Method == "GET" {
+		httpAgent, err = agent.Manager.NewHttpFlvPlayAgent(ctx, r, w)
+		if err != nil {
+			logger.Warn("create HttpFlvPlayAgent failed", err)
+			return
 		}
-		logger.Info(tag.TagType, tag.TimeStamp, tag.DataSize)
-
-		//len, err := r.Body.Read(buf)
-		//if err !=nil{
-		//	logger.Debug(len)
-		//	logger.Error(err)
-		//	break;
-		//}
-
-	//	log.Debugf("%d, %d",len, buf[0])
 	}
+
+	err = httpAgent.Pump()
+	if err != nil{
+		logger.Info("agent exit", err)
+		return
+	}
+
+	return
 }

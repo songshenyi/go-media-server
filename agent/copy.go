@@ -78,6 +78,34 @@ func (v* CopyAgent)GetSource() (source Agent){
 }
 
 func (v* CopyAgent)RegisterDest(dest Agent) (err error){
+	logger.Debug("register dest")
+	v.dest = append(v.dest, dest)
+
+	if v.header != nil{
+		if err = dest.Write(v.header.Copy()); err != nil{
+			logger.Warn(err); return
+		}
+		logger.Debug("copy flv header")
+	}
+	if v.metadata != nil{
+		if err = dest.Write(v.metadata.Copy()); err != nil{
+			logger.Warn(err); return
+		}
+		logger.Debug("copy flv metadata tag")
+	}
+	if v.audioSequenceHeader != nil{
+		if err = dest.Write(v.audioSequenceHeader.Copy()); err != nil{
+			logger.Warn(err); return
+		}
+		logger.Debug("copy flv aac0")
+	}
+	if v.videoSequenceHeader != nil{
+		if err = dest.Write(v.videoSequenceHeader.Copy()); err !=nil{
+			logger.Warn(err); return
+		}
+		logger.Debug("copy flv avc0")
+	}
+
 	return
 }
 

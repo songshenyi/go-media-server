@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"github.com/songshenyi/go-media-server/logger"
 	"github.com/songshenyi/go-media-server/application"
+	"github.com/songshenyi/go-media-server/core"
+	"github.com/songshenyi/go-media-server/agent"
 )
 
 func signalHandle(){
@@ -36,5 +38,7 @@ func main(){
 	httpServer := server.NewHttpServer(8888)
 	application.AddHandle(httpServer)
 	httpServer.Start()
+	ctx := core.NewContext()
+	agent.Manager= agent.NewManager(ctx)
 	signalHandle()
 }
