@@ -3,6 +3,7 @@ package agent
 import (
 	"github.com/songshenyi/go-media-server/core"
 	"github.com/songshenyi/go-media-server/avformat"
+	"gitlab.lcloud.1verge.net/live/live_proxy/logger"
 )
 
 type CopyAgent struct{
@@ -10,7 +11,7 @@ type CopyAgent struct{
 	source Agent
 	dest []Agent
 
-	header *avformat.FlvHeader
+	header *avformat.FlvMessage
 	metadata *avformat.FlvMessage
 	videoSequenceHeader *avformat.FlvMessage
 	audioSequenceHeader *avformat.FlvMessage
@@ -35,7 +36,31 @@ func (v* CopyAgent)Pump() (err error){
 	return
 }
 
-func (v* CopyAgent)Write(m Message) (err error){
+func (v* CopyAgent)Write(m *avformat.FlvMessage) (err error){
+
+	if m.Header != nil{
+		v.header = m.Copy()
+		logger.Debug("write flv header")
+	}else if m.MetaData{
+		v.metadata= m.Copy()
+		logger.Debug("write flv metadata")
+	}else if m.AudioSequenceHeader{
+		v.audioSequenceHeader = m.Copy()
+		logger.Debug("write flv aac0")
+	} else if m.VideoSequenceHeader{
+		v.videoSequenceHeader = m.Copy()
+		logger.Debug("write flv avc0")
+	}
+
+	for _, d :=range v.dest{
+		d.Write(m.Copy())
+	}
+
+	// for single core, manually sched to send more.
+	//if Workers == 1 {
+	//	runtime.Gosched()
+	//}
+
 	return
 }
 

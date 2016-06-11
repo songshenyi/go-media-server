@@ -29,11 +29,6 @@ func LiveHandler(w http.ResponseWriter, r *http.Request){
 
 	}
 
-	header, err := avformat.ReadFlvHeader(r.Body)
-	if  err != nil{
-		logger.Warn(err)
-	}
-	logger.Info(header)
 
 	for{
 		tag, err := avformat.ReadFlvTag(r.Body)

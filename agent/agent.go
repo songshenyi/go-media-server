@@ -35,7 +35,7 @@ type Agent interface {
 	// from source to dest.
 	Pump() (err error)
 	// write to dest, from source.
-	Write(m avformat.FlvMessage) (err error)
+	Write(m *avformat.FlvMessage) (err error)
 
 	RegisterSource(source Agent) (err error)
 

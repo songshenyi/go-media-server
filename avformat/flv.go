@@ -52,11 +52,11 @@ func (v *RtmpMessageType) UnmarshalBinary(data []byte) (err error) {
 
 
 const (
-	RtmpMsgAmf0DataMessage RtmpMessageType = 18 // 0x12
-	RtmpMsgAmf3DataMessage RtmpMessageType = 15 // 0x0F
+	RtmpMsgAmf0DataMessage 	RtmpMessageType = 18 // 0x12
+	RtmpMsgAmf3DataMessage 	RtmpMessageType = 15 // 0x0F
 
-	RtmpMsgAudioMessage RtmpMessageType = 8 // 0x08
-	RtmpMsgVideoMessage RtmpMessageType = 9 // 0x09
+	RtmpMsgAudioMessage 	RtmpMessageType = 8 // 0x08
+	RtmpMsgVideoMessage 	RtmpMessageType = 9 // 0x09
 )
 
 type FlvMessage struct {
@@ -66,6 +66,25 @@ type FlvMessage struct {
 	MetaData bool
 	VideoSequenceHeader bool
 	AudioSequenceHeader bool
+}
+
+func NewFlvMessage()(m *FlvMessage, e error){
+	return &FlvMessage{}, nil
+}
+
+func (v* FlvMessage)Copy() (m* FlvMessage){
+	m, _ = NewFlvMessage()
+	if(v.Header != nil){
+		header := *v.Header
+		m.Header = &header
+	}
+
+	if(v.Tag != nil){
+		tag := *v.Tag
+		m.Tag = &tag
+	}
+
+	return m
 }
 
 const (
@@ -125,6 +144,13 @@ type FlvHeader struct {
 	Offset GMSUint32
 }
 
+func (h *FlvHeader)ToMessage()(m *FlvMessage, err error){
+	m, err = NewFlvMessage()
+	m.Header = h
+
+	return m, err
+}
+
 func ReadFlvHeader(r io.Reader)(h *FlvHeader, err error){
 	h = &FlvHeader{}
 	var buf bytes.Buffer
@@ -159,6 +185,21 @@ func ReadFlvHeader(r io.Reader)(h *FlvHeader, err error){
 	return
 }
 
+func Btoi(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
+func (h *FlvHeader)ToData()(data []byte, err error){
+	var AVFlag GMSUint8
+	audioFlag := GMSUint8(0x04 * Btoi(h.EnableAudio))
+	videoFlag := GMSUint8(0x04 * Btoi(h.EnableVideo))
+	AVFlag = AVFlag | audioFlag | videoFlag
+
+	return utils.Marshals(&h.Signature, &h.Version, &AVFlag, &h.Offset)
+}
 
 type FlvTag struct{
 	TagType   RtmpMessageType
@@ -167,6 +208,59 @@ type FlvTag struct{
 	StreamId  GMSUint24
 	Payload   []byte
 }
+
+func (tag *FlvTag)ToMessage()(m *FlvMessage, err error){
+	m, err = NewFlvMessage()
+	m.Tag = tag
+
+	switch tag.TagType {
+	case RtmpMsgAmf0DataMessage:
+		m.MetaData = true
+	case RtmpMsgAudioMessage:
+		m.AudioSequenceHeader = tag.isAudioSequenceHeader()
+	case RtmpMsgVideoMessage:
+		m.VideoSequenceHeader = tag.isVideoSequenceHeader()
+	}
+
+	return m, err
+}
+
+func (tag *FlvTag)isVideoSequenceHeader() bool {
+	// TODO: FIXME: support other codecs.
+	if len(tag.Payload) < 2 {
+		return false
+	}
+
+	b := tag.Payload
+
+	// sequence header only for h264
+	codec := RtmpCodecVideo(b[0] & 0x0f)
+	if codec != RtmpAVC {
+		return false
+	}
+
+	frameType := RtmpAVCFrame((b[0] >> 4) & 0x0f)
+	avcPacketType := RtmpVideoAVCType(b[1])
+	return frameType == RtmpKeyFrame && avcPacketType == RtmpSequenceHeader
+}
+
+func (tag *FlvTag) isAudioSequenceHeader() bool {
+	// TODO: FIXME: support other codecs.
+	if len(tag.Payload) < 2 {
+		return false
+	}
+
+	b := tag.Payload
+
+	soundFormat := RtmpCodecAudio((b[0] >> 4) & 0x0f)
+	if soundFormat != RtmpAAC {
+		return false
+	}
+
+	aacPacketType := RtmpAacType(b[1])
+	return aacPacketType == RtmpAacSequenceHeader
+}
+
 
 func FlvGetDataSize(data []byte)(size uint32, err error){
 	size = uint32(data[0])<<16 | uint32(data[1])<<8 | uint32(data[2])
@@ -253,24 +347,24 @@ func ReadFlvTag(r io.Reader)(tag *FlvTag, err error){
 type RtmpCodecAudio uint8
 
 const (
-	RTMPLinearPCMPlatformEndian RtmpCodecAudio = iota
-	RTMPADPCM
-	RTMPMP3
-	RTMPLinearPCMLittleEndian
-	RTMPNellymoser16kHzMono
-	RTMPNellymoser8kHzMono
-	RTMPNellymoser
-	RTMPReservedG711AlawLogarithmicPCM
-	RTMPReservedG711MuLawLogarithmicPCM
-	RTMPReserved
-	RTMPAAC
-	RTMPSpeex
-	RTMPReserved1CodecAudio
-	RTMPReserved2CodecAudio
-	RTMPReservedMP3_8kHz
-	RTMPReservedDeviceSpecificSound
-	RTMPReserved3CodecAudio
-	RTMPDisabledCodecAudio
+	RtmpLinearPCMPlatformEndian RtmpCodecAudio = iota
+	RtmpADPCM
+	RtmpMP3
+	RtmpLinearPCMLittleEndian
+	RtmpNellymoser16kHzMono
+	RtmpNellymoser8kHzMono
+	RtmpNellymoser
+	RtmpReservedG711AlawLogarithmicPCM
+	RtmpReservedG711MuLawLogarithmicPCM
+	RtmpReserved
+	RtmpAAC
+	RtmpSpeex
+	RtmpReserved1CodecAudio
+	RtmpReserved2CodecAudio
+	RtmpReservedMP3_8kHz
+	RtmpReservedDeviceSpecificSound
+	RtmpReserved3CodecAudio
+	RtmpDisabledCodecAudio
 )
 
 // AACPacketType IF SoundFormat == 10 UI8
@@ -280,9 +374,9 @@ const (
 type RtmpAacType uint8
 
 const (
-	RTMPAacSequenceHeader RtmpAacType = iota
-	RTMPAacRawData
-	RTMPAacReserved
+	RtmpAacSequenceHeader RtmpAacType = iota
+	RtmpAacRawData
+	RtmpAacReserved
 )
 
 // E.4.3.1 VIDEODATA
@@ -297,16 +391,16 @@ const (
 type RtmpCodecVideo uint8
 
 const (
-	RTMPReservedCodecVideo RtmpCodecVideo = iota
-	RTMPReserved1CodecVideo
-	RTMPSorensonH263
-	RTMPScreenVideo
-	RTMPOn2VP6
-	RTMPOn2VP6WithAlphaChannel
-	RTMPScreenVideoVersion2
-	RTMPAVC
-	RTMPDisabledCodecVideo
-	RTMPReserved2CodecVideo
+	RtmpReservedCodecVideo RtmpCodecVideo = iota
+	RtmpReserved1CodecVideo
+	RtmpSorensonH263
+	RtmpScreenVideo
+	RtmpOn2VP6
+	RtmpOn2VP6WithAlphaChannel
+	RtmpScreenVideoVersion2
+	RtmpAVC
+	RtmpDisabledCodecVideo
+	RtmpReserved2CodecVideo
 )
 
 // E.4.3.1 VIDEODATA
@@ -320,13 +414,13 @@ const (
 type RtmpAVCFrame uint8
 
 const (
-	RTMPReservedAVCFrame RtmpAVCFrame = iota
-	RTMPKeyFrame
-	RTMPInterFrame
-	RTMPDisposableInterFrame
-	RTMPGeneratedKeyFrame
-	RTMPVideoInfoFrame
-	RTMPReserved1AVCFrame
+	RtmpReservedAVCFrame RtmpAVCFrame = iota
+	RtmpKeyFrame
+	RtmpInterFrame
+	RtmpDisposableInterFrame
+	RtmpGeneratedKeyFrame
+	RtmpVideoInfoFrame
+	RtmpReserved1AVCFrame
 )
 
 // AVCPacketType IF CodecID == 7 UI8
@@ -338,49 +432,11 @@ const (
 type RtmpVideoAVCType uint8
 
 const (
-	RTMPSequenceHeader RtmpVideoAVCType = iota
-	RTMPNALU
-	RTMPSequenceHeaderEOF
-	RTMPReservedAVCType
+	RtmpSequenceHeader RtmpVideoAVCType = iota
+	RtmpNALU
+	RtmpSequenceHeaderEOF
+	RtmpReservedAVCType
 )
-
-
-
-func (v *FlvMessage) isVideoSequenceHeader() bool {
-	// TODO: FIXME: support other codecs.
-	if len(v.Tag.Payload) < 2 {
-		return false
-	}
-
-	b := v.Tag.Payload
-
-	// sequence header only for h264
-	codec := RtmpCodecVideo(b[0] & 0x0f)
-	if codec != RTMPAVC {
-		return false
-	}
-
-	frameType := RtmpAVCFrame((b[0] >> 4) & 0x0f)
-	avcPacketType := RtmpVideoAVCType(b[1])
-	return frameType == RTMPKeyFrame && avcPacketType == RTMPSequenceHeader
-}
-
-func (v *FlvMessage) isAudioSequenceHeader() bool {
-	// TODO: FIXME: support other codecs.
-	if len(v.Tag.Payload) < 2 {
-		return false
-	}
-
-	b := v.Tag.Payload
-
-	soundFormat := RtmpCodecAudio((b[0] >> 4) & 0x0f)
-	if soundFormat != RTMPAAC {
-		return false
-	}
-
-	aacPacketType := RtmpAacType(b[1])
-	return aacPacketType == RTMPAacSequenceHeader
-}
 
 func (v RtmpMessageType) isAudio() bool {
 	return v == RtmpMsgAudioMessage

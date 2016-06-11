@@ -31,7 +31,7 @@ func (v *FlvAgentManager) NewHttpFlvPublishAgent(ctx core.Context, r *http.Reque
 	defer v.lock.Unlock()
 
 	var copyAgent Agent
-	if copyAgent, err = v.getCopyAgent(ctx, r.RequestURI()); err != nil{
+	if copyAgent, err = v.getCopyAgent(ctx, r.RequestURI); err != nil{
 		logger.Warnf("getCopyAgent %s", err.Error())
 	}
 
@@ -57,7 +57,8 @@ func (v *FlvAgentManager) NewHttpFlvPublishAgent(ctx core.Context, r *http.Reque
 }
 
 func (v *FlvAgentManager) getCopyAgent(ctx core.Context, uri string) (copyAgent Agent, err error){
-	if copyAgent, err = v.sources[uri]; err != nil{
+	var ok bool
+	if copyAgent, ok = v.sources[uri]; !ok {
 		copyAgent = NewCopyAgent(ctx)
 		v.sources[uri] = copyAgent
 	}
