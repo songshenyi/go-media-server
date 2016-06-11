@@ -226,6 +226,16 @@ func (tag *FlvTag)ToMessage()(m *FlvMessage, err error){
 	return m, err
 }
 
+func (tag *FlvTag)TagHeaderBytes()(data []byte, err error){
+	return utils.Marshals(&tag.TagType, &tag.DataSize, &tag.TimeStamp, &tag.StreamId)
+}
+
+func (tag *FlvTag)PreTagSizeBytes()(data []byte, err error){
+	var PreTagSize GMSUint32
+	PreTagSize = GMSUint32(tag.DataSize) + 11
+	return utils.Marshals(&PreTagSize)
+}
+
 func (tag *FlvTag)isVideoSequenceHeader() bool {
 	// TODO: FIXME: support other codecs.
 	if len(tag.Payload) < 2 {

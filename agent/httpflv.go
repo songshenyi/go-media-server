@@ -124,12 +124,26 @@ func (v *HttpFlvPlayAgent)Pump() (err error){
 		case m := <-v.writeBuf:
 			if (m.Header != nil) {
 				data, _ := m.Header.ToData()
-				logger.Info(data)
+				logger.Info("write flv header")
 				v.writer.Write(data)
 			}
 			if (m.Tag != nil) {
-				logger.Info(m.Tag.Payload[0])
+				logger.Trace("write flv tag", m.Tag.TimeStamp)
+				if tagHeader, err := m.Tag.TagHeaderBytes(); err !=nil{
+					logger.Warn("get tag header failed", err)
+					return err
+				}else{
+					v.writer.Write(tagHeader)
+				}
+
 				v.writer.Write(m.Tag.Payload)
+
+				if preTagSize, err := m.Tag.PreTagSizeBytes(); err != nil{
+					logger.Warn("get tag pretagsize failed", err)
+					return err
+				}else{
+					v.writer.Write(preTagSize)
+				}
 			}
 		}
 	}
