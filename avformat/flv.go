@@ -8,32 +8,13 @@ import (
 	"github.com/songshenyi/go-media-server/utils"
 )
 
-
-//func (h *FLVHeader)SetAudioFlag(flag bool){
-//	f := 0x04 * flag
-//	h.Data[4] = (( h.Data[4] & 0x01) |  f)
-//}
-//
-//func (h *FLVHeader)SetVideoFlag(flag bool){
-//	f := 0x01 * flag
-//	h.Data[4] = (( h.Data[4] & 0x04) |  f)
-//}
-//
-//func (h *FLVHeader)GetAudioFlag()(flag bool){
-//	return h.Data[4] & 0x04
-//}
-//
-//func (h *FLVHeader)GetVideoFlag()(flag bool){
-//	return h.Data[4] & 0x01
-//}
-
 type Marshaler interface {
 	encoding.BinaryUnmarshaler
 	encoding.BinaryMarshaler
 	Size() int
 }
 
-type RtmpMessageType GMSUint8
+type RtmpMessageType NativeUint8
 func (v *RtmpMessageType)MarshalBinary() (data []byte, err error) {
 	return []byte{byte(*v)}, nil
 }
@@ -137,12 +118,12 @@ func (v *FlvTagTimestamp) UnmarshalBinary(data []byte) (err error) {
 }
 
 type FlvHeader struct {
-	Signature FlvHeaderSignature
-	Version GMSUint8
+	Signature   FlvHeaderSignature
+	Version     NativeUint8
 	EnableAudio bool
 	EnableVideo bool
-	Offset GMSUint32
-	PreTagSize0 GMSUint32
+	Offset      NativeUint32
+	PreTagSize0 NativeUint32
 }
 
 func (h *FlvHeader)ToMessage()(m *FlvMessage, err error){
@@ -161,7 +142,7 @@ func ReadFlvHeader(r io.Reader)(h *FlvHeader, err error){
 	}
 
 	data := buf.Bytes()
-	var AVFlag GMSUint8
+	var AVFlag NativeUint8
 	if err = utils.Unmarshals(bytes.NewBuffer(data), &h.Signature, &h.Version, &AVFlag, &h.Offset, &h.PreTagSize0); err != nil{
 		logger.Warn("Unmarshals flv header failed")
 		return h, err
@@ -194,9 +175,9 @@ func Btoi(b bool) int {
 }
 
 func (h *FlvHeader)ToData()(data []byte, err error){
-	var AVFlag GMSUint8
-	audioFlag := GMSUint8(0x04 * Btoi(h.EnableAudio))
-	videoFlag := GMSUint8(0x01 * Btoi(h.EnableVideo))
+	var AVFlag NativeUint8
+	audioFlag := NativeUint8(0x04 * Btoi(h.EnableAudio))
+	videoFlag := NativeUint8(0x01 * Btoi(h.EnableVideo))
 	AVFlag = AVFlag | audioFlag | videoFlag
 
 	return utils.Marshals(&h.Signature, &h.Version, &AVFlag, &h.Offset, &h.PreTagSize0)
@@ -204,9 +185,9 @@ func (h *FlvHeader)ToData()(data []byte, err error){
 
 type FlvTag struct{
 	TagType   RtmpMessageType
-	DataSize  GMSUint24
+	DataSize  NativeUint24
 	TimeStamp FlvTagTimestamp
-	StreamId  GMSUint24
+	StreamId  NativeUint24
 	Payload   []byte
 }
 
@@ -231,8 +212,8 @@ func (tag *FlvTag)TagHeaderBytes()(data []byte, err error){
 }
 
 func (tag *FlvTag)PreTagSizeBytes()(data []byte, err error){
-	var PreTagSize GMSUint32
-	PreTagSize = GMSUint32(tag.DataSize) + 11
+	var PreTagSize NativeUint32
+	PreTagSize = NativeUint32(tag.DataSize) + 11
 	return utils.Marshals(&PreTagSize)
 }
 
