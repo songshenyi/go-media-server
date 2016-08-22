@@ -1,15 +1,17 @@
-package agent
+package manager
 
 import (
 	"github.com/songshenyi/go-media-server/core"
 	"sync"
 	"net/http"
 	"github.com/songshenyi/go-media-server/logger"
+	"github.com/songshenyi/go-media-server/agent/httpflv"
+	"github.com/songshenyi/go-media-server/agent"
 )
 
 type FlvAgentManager struct {
 	ctx core.Context
-	sources map[string]Agent
+	sources map[string]agent.Agent
 	lock sync.Mutex
 }
 
@@ -18,7 +20,7 @@ var Manager *FlvAgentManager
 func NewManager(ctx core.Context) *FlvAgentManager {
 	return &FlvAgentManager{
 		ctx: ctx,
-		sources: make(map[string]Agent),
+		sources: make(map[string]agent.Agent),
 	}
 }
 
@@ -26,23 +28,23 @@ func (v *FlvAgentManager)Close(){
 
 }
 
-func (v *FlvAgentManager) NewHttpFlvPublishAgent(ctx core.Context, r *http.Request, w http.ResponseWriter)(publishAgent Agent,  err error){
+func (v *FlvAgentManager) NewHttpFlvPublishAgent(ctx core.Context, r *http.Request, w http.ResponseWriter)(publishAgent agent.Agent,  err error){
 	v.lock.Lock()
 	defer v.lock.Unlock()
 
-	var copyAgent Agent
+	var copyAgent agent.Agent
 	if copyAgent, err = v.getCopyAgent(ctx, r.RequestURI); err != nil{
 		logger.Warnf("getCopyAgent failed %s", err.Error())
 		return publishAgent, err
 	}
 
 	if copyAgent.GetSource() != nil{
-		err = PublishConfilictError
+		err = agent.PublishConfilictError
 		logger.Warnf("conflict %s", err)
 		return publishAgent, err
 	}
 
-	publishAgent = NewFLVPublishAgent(ctx, r, w)
+	publishAgent = httpflv.NewFLVPublishAgent(ctx, r, w)
 
 	if err = publishAgent.Open();  err != nil{
 		logger.Warn("open agent failed", err)
@@ -57,17 +59,17 @@ func (v *FlvAgentManager) NewHttpFlvPublishAgent(ctx core.Context, r *http.Reque
 	return publishAgent, err
 }
 
-func (v *FlvAgentManager) NewHttpFlvPlayAgent(ctx core.Context, r *http.Request, w http.ResponseWriter)(playAgent Agent, err error){
+func (v *FlvAgentManager) NewHttpFlvPlayAgent(ctx core.Context, r *http.Request, w http.ResponseWriter)(playAgent agent.Agent, err error){
 	v.lock.Lock()
 	defer v.lock.Unlock()
 
-	var copyAgent Agent
+	var copyAgent agent.Agent
 	if copyAgent, err = v.getCopyAgent(ctx, r.RequestURI); err != nil{
 		logger.Warnf("getCopyAgent %s", err.Error())
 		return playAgent, err
 	}
 
-	playAgent = NewFLVPlayAgent(ctx, r, w)
+	playAgent = httpflv.NewFLVPlayAgent(ctx, r, w)
 	if err = playAgent.Open(); err != nil{
 		logger.Warn("open play agent failed", err)
 		return playAgent, err
@@ -80,10 +82,10 @@ func (v *FlvAgentManager) NewHttpFlvPlayAgent(ctx core.Context, r *http.Request,
 	return playAgent, err
 }
 
-func (v *FlvAgentManager) getCopyAgent(ctx core.Context, uri string) (copyAgent Agent, err error){
+func (v *FlvAgentManager) getCopyAgent(ctx core.Context, uri string) (copyAgent agent.Agent, err error){
 	var ok bool
 	if copyAgent, ok = v.sources[uri]; !ok {
-		copyAgent = NewCopyAgent(ctx)
+		copyAgent = agent.NewCopyAgent(ctx)
 		v.sources[uri] = copyAgent
 	}
 	return

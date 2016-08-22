@@ -39,27 +39,27 @@ func InitLog(logConfigFile string) error {
 }
 
 func Tracef(format string, params ...interface{}) {
-	seelog.Tracef(format, params)
+	seelog.Tracef(format, params...)
 }
 
 func Debugf(format string, params ...interface{}) {
-	seelog.Debugf(format, params)
+	seelog.Debugf(format, params...)
 }
 
 func Infof(format string, params ...interface{}) {
-	seelog.Infof(format, params)
+	seelog.Infof(format, params...)
 }
 
 func Warnf(format string, params ...interface{}) error {
-	return seelog.Warnf(format, params)
+	return seelog.Warnf(format, params...)
 }
 
 func Errorf(format string, params ...interface{}) error {
-	return seelog.Errorf(format, params)
+	return seelog.Errorf(format, params...)
 }
 
 func Criticalf(format string, params ...interface{}) error {
-	return seelog.Criticalf(format, params)
+	return seelog.Criticalf(format, params...)
 }
 
 func Trace(v ...interface{}) {

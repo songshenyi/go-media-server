@@ -5,6 +5,7 @@ import (
 	"github.com/songshenyi/go-media-server/server"
 	"github.com/songshenyi/go-media-server/logger"
 	"github.com/songshenyi/go-media-server/agent"
+	agent_manager "github.com/songshenyi/go-media-server/agent/manager"
 	"github.com/songshenyi/go-media-server/core"
 )
 
@@ -21,13 +22,13 @@ func LiveHandler(w http.ResponseWriter, r *http.Request){
 	var httpAgent agent.Agent
 	var err error
 	if(r.Method == "PUT" || r.Method == "POST"){
-		httpAgent, err = agent.Manager.NewHttpFlvPublishAgent(ctx, r, w)
+		httpAgent, err = agent_manager.Manager.NewHttpFlvPublishAgent(ctx, r, w)
 		if err != nil{
 			logger.Warn("create HttpFlvPublishAgent failed", err)
 			return
 		}
 	}else if r.Method == "GET" {
-		httpAgent, err = agent.Manager.NewHttpFlvPlayAgent(ctx, r, w)
+		httpAgent, err = agent_manager.Manager.NewHttpFlvPlayAgent(ctx, r, w)
 		if err != nil {
 			logger.Warn("create HttpFlvPlayAgent failed", err)
 			return
