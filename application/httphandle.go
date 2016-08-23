@@ -7,10 +7,37 @@ import (
 	"github.com/songshenyi/go-media-server/agent"
 	agent_manager "github.com/songshenyi/go-media-server/agent/manager"
 	"github.com/songshenyi/go-media-server/core"
+//	"io/ioutil"
 )
 
 func AddHandle(httpServer *server.HttpServer){
 	httpServer.HandleMap["/live/{name}"] = LiveHandler
+	httpServer.HandleMap["/live/songshenyi/debug"] = DebugHandler
+}
+
+func DebugHandler(writer http.ResponseWriter, reader *http.Request){
+	//defer reader.Body.Close()
+	//body, err := ioutil.ReadAll(reader.Body)
+	//if err != nil {
+	//	logger.Error(err.Error())
+	//	writer.WriteHeader(http.StatusBadRequest)
+	//	return
+	//}
+
+	ctx := core.NewContext()
+	httpAgent, err := agent_manager.Manager.NewHttpFlvIngestAgent(ctx,
+		"")
+	if err != nil{
+		logger.Warn(err)
+		return
+	}
+	err = httpAgent.Pump()
+	if err != nil{
+		logger.Info("agent exit", err)
+		return
+	}
+
+	return
 }
 
 func LiveHandler(w http.ResponseWriter, r *http.Request){
