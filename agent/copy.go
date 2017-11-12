@@ -3,7 +3,7 @@ package agent
 import (
 	"github.com/songshenyi/go-media-server/core"
 	"github.com/songshenyi/go-media-server/avformat"
-	"gitlab.lcloud.1verge.net/live/live_proxy/logger"
+	"github.com/songshenyi/go-media-server/logger"
 )
 
 type CopyAgent struct{
